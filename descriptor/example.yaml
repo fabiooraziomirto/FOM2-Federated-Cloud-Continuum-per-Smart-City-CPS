@@ -1,0 +1,49 @@
+experiment:
+  id: traffic-placement-v1
+  version: 1.0.0
+  hypothesis: "Fog placement of state estimation reduces control-loop latency vs cloud"
+  owner: unime-mdslab
+
+infrastructure:
+  sites:
+    - {id: edge-me, tier: edge, site: local, provider: manual, nodes: 1, arch: arm64, device: raspberry-pi-4-4gb, access: wired}
+    - {id: fog-x,   tier: fog,   site: be-gent1-bi-vm1, nodes: 2, flavor: m1.xlarge}
+    - {id: cloud-x, tier: cloud, site: be-gent1-bi-vm1, nodes: 2, flavor: m1.large}   # TODO secondo sito
+  links:
+    - {from: edge-me, to: fog-x,   profile: lan}
+    - {from: fog-x,   to: cloud-x, profile: wan}
+  impairments:
+    wan: {delay_ms: [10, 50, 100], jitter_ms: 5, loss_pct: [0, 1]}
+
+application:
+  class: control-cps
+  components:
+    - {name: detector-gw,       placement: edge}
+    - {name: state-estimator,   placement: [fog, cloud]}
+    - {name: signal-controller, placement: fog}
+    - {name: actuator,          placement: edge}
+  dataflows:
+    - {from: detector-gw,       to: state-estimator,   rate_hz: 1}
+    - {from: state-estimator,   to: signal-controller, rate_hz: 1}
+    - {from: signal-controller, to: actuator,          rate_hz: 0.2}
+  timing: {control_period_s: 5, deadline_ms: 500}
+  workload_profile: sumo-scenario-v1
+
+observability:
+  clock_sync: chrony
+  metrics: [infra.cpu, net.rtt, app.e2e_latency, cps.avg_wait_time, cps.queue_length]
+  traces: opentelemetry
+  sampling_s: 1
+
+conditions:
+  recorded: [background_load, wan_rtt_baseline, clock_offset]
+
+execution:
+  repetitions: 10
+  duration_min: 30
+  warmup_min: 5
+  termination: {on: [duration, "deadline_miss_rate > 0.2"]}
+
+provenance:
+  capture: [descriptor_hash, image_digests, node_inventory, impairment_log, sumo_seed]
+  format: ro-crate

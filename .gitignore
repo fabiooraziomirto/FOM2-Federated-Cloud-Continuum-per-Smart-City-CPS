@@ -1,0 +1,23 @@
+# LaTeX
+paper/*.aux
+paper/*.bbl
+paper/*.blg
+paper/*.fdb_latexmk
+paper/*.fls
+paper/*.log
+paper/*.out
+paper/*.pdf
+# template Springer (scaricato, non nostro)
+template_ccis/
+*.zip
+# risultati grezzi: tracciare solo la struttura
+experiments/results/*
+!experiments/results/.gitkeep
+# Python
+__pycache__/
+*.pyc
+.venv/
+*.egg-info/
+# credenziali SLICES
+.slices/
+auth.json
